@@ -551,6 +551,12 @@
         </div>
     </div>
 
+    <!-- AUDIO TEST BUTTON -->
+    <button onclick="testAudio()"
+        style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: #3b82f6; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold;">
+        🔊 Ovozni Tekshirish
+    </button>
+
     <script>
         const days = ['mon', 'tue', 'wed', 'thu', 'fri'];
         let stream = null; // Kamera oqimini saqlash uchun o'zgaruvchi
@@ -564,6 +570,10 @@
         function getStudentsFromBase() {
             const allUsers = JSON.parse(localStorage.getItem('usersList')) || [];
             return allUsers.filter(u => u.role === 'student');
+        }
+
+        function testAudio() {
+            speakNotification("Ovoz tizimi ishlayapti. 5 baho.");
         }
 
         window.onload = function () {
@@ -587,13 +597,18 @@
                 // Boshlang'ich baholarni saqlab olamiz
                 captureInitialGrades(user.info);
                 renderChildStats(user.info, students);
+
+                // POLLING: Har 2 soniyada baholarni tekshirish (Event listener ishonchsiz bo'lsa)
+                setInterval(() => {
+                    checkGradeChanges(user.info);
+                }, 2000);
             }
 
             setTimeout(() => {
                 document.getElementById("loader-wrapper").classList.add("loader-hidden");
             }, 800);
 
-            // Ovozli xabarnoma uchun tinglovchi
+            // Event listener ham qoladi (qo'shimcha himoya)
             window.addEventListener('storage', function (e) {
                 if (e.key === 'journalData') {
                     checkGradeChanges(user.info);
@@ -612,6 +627,8 @@
             const journal = JSON.parse(localStorage.getItem('journalData')) || {};
             const currentGrades = journal[childLogin] || {};
 
+            let hasChange = false;
+
             // Har bir kunni tekshiramiz
             days.forEach(day => {
                 const oldVal = previousGrades[day];
@@ -622,28 +639,33 @@
 
                     // Ovozli xabar
                     speakNotification(`Farzandingizga ${newVal} baho qo'yildi!`);
-
-                    // Toast xabar chiqarish (ixtiyoriy, agar kerak bo'lsa)
-                    // ...
+                    hasChange = true;
                 }
             });
 
-            // Holatni yangilaymiz
-            previousGrades = { ...currentGrades };
+            if (hasChange) {
+                // Holatni yangilaymiz
+                previousGrades = { ...currentGrades };
 
-            // Jadvalni ham yangilaymiz
-            const students = getStudentsFromBase();
-            renderChildStats(childLogin, students);
+                // Jadvalni ham yangilaymiz
+                const students = getStudentsFromBase();
+                renderChildStats(childLogin, students);
+            }
         }
 
         function speakNotification(text) {
             if ('speechSynthesis' in window) {
+                // Avvalgi gaplarni to'xtatish (navbatma-navbat gapirmasligi uchun)
+                window.speechSynthesis.cancel();
+
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'uz-UZ'; // O'zbek tili (agar brauzerda bor bo'lsa)
                 // Agar o'zbek tili bo'lmasa, rus yoki ingliz aksentida o'qishi mumkin, 
                 // lekin matn o'zbekcha bo'lgani uchun tushunarli bo'ladi.
                 utterance.rate = 0.9; // Biroz sekinroq
                 window.speechSynthesis.speak(utterance);
+            } else {
+                console.error("Browser does not support TTS");
             }
         }
 
