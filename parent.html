@@ -551,12 +551,6 @@
         </div>
     </div>
 
-    <!-- AUDIO TEST BUTTON -->
-    <button onclick="testAudio()"
-        style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: #3b82f6; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold;">
-        🔊 Ovozni Tekshirish
-    </button>
-
     <script>
         const days = ['mon', 'tue', 'wed', 'thu', 'fri'];
         let stream = null; // Kamera oqimini saqlash uchun o'zgaruvchi
@@ -570,10 +564,6 @@
         function getStudentsFromBase() {
             const allUsers = JSON.parse(localStorage.getItem('usersList')) || [];
             return allUsers.filter(u => u.role === 'student');
-        }
-
-        function testAudio() {
-            speakNotification("Ovoz tizimi ishlayapti. 5 baho.");
         }
 
         window.onload = function () {
@@ -597,10 +587,12 @@
                 // Boshlang'ich baholarni saqlab olamiz
                 captureInitialGrades(user.info);
                 renderChildStats(user.info, students);
+                updateAttendanceStats(user.info); // Initial check
 
-                // POLLING: Har 2 soniyada baholarni tekshirish (Event listener ishonchsiz bo'lsa)
+                // POLLING: Har 2 soniyada yangilash
                 setInterval(() => {
                     checkGradeChanges(user.info);
+                    updateAttendanceStats(user.info);
                 }, 2000);
             }
 
@@ -612,6 +604,9 @@
             window.addEventListener('storage', function (e) {
                 if (e.key === 'journalData') {
                     checkGradeChanges(user.info);
+                }
+                if (e.key === 'attendanceData') {
+                    updateAttendanceStats(user.info);
                 }
             });
         };
@@ -650,6 +645,38 @@
                 // Jadvalni ham yangilaymiz
                 const students = getStudentsFromBase();
                 renderChildStats(childLogin, students);
+            }
+        }
+
+        function updateAttendanceStats(childLogin) {
+            const attendanceDB = JSON.parse(localStorage.getItem('attendanceData')) || {};
+            let presentCount = 0;
+            let totalDays = 0;
+
+            // Barcha sanalarni tekshiramiz
+            Object.values(attendanceDB).forEach(dayRecord => {
+                if (dayRecord && dayRecord[childLogin] !== undefined) {
+                    totalDays++;
+                    if (dayRecord[childLogin] === true) {
+                        presentCount++;
+                    }
+                }
+            });
+
+            // Foizni hisoblash
+            let percentage = 100;
+            if (totalDays > 0) {
+                percentage = (presentCount / totalDays) * 100;
+            }
+
+            // UI ni yangilash
+            const statCards = document.querySelectorAll('.stat-card');
+            if (statCards.length >= 2) {
+                const davomatCard = statCards[1];
+                const pTag = davomatCard.querySelector('p');
+                if (pTag) {
+                    pTag.innerText = Math.round(percentage) + "%";
+                }
             }
         }
 
