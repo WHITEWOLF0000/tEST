@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kirish | E-sinf</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* --- UMUMIY SOZLAMALAR --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        
+        body { 
+            min-height: 100vh; 
+            background: radial-gradient(circle at top left, #1e293b, #0f172a); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            color: white; 
+            overflow: hidden; 
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #loader-wrapper { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; transition: 0.5s; }
+        .loader { width: 50px; height: 50px; border: 5px solid rgba(16, 185, 129, 0.1); border-top: 5px solid #10b981; border-radius: 50%; animation: spin 1s linear infinite; }
+        .loader-hidden { opacity: 0; visibility: hidden; }
+
+        /* --- LOGIN KARTA --- */
+        .login-card { 
+            background: rgba(255, 255, 255, 0.03); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            padding: 40px; 
+            border-radius: 28px; 
+            width: 100%; 
+            max-width: 400px; 
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5); 
+            text-align: center; 
+            z-index: 50; 
+            position: relative;
+            transition: 0.3s;
+        }
+        /* Modal ochilganda orqa fon xiralashadi */
+        body.modal-open .login-card,
+        body.modal-open .floating-user {
+            filter: blur(5px);
+            pointer-events: none;
+        }
+
+        h2 { color: #10b981; margin-top: 30px; }
+        .input-group { text-align: left; margin-top: 20px; }
+        label { display: block; font-size: 12px; color: #94a3b8; margin-top: 5px; }
+        input { width: 100%; padding: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; color: white; outline: none; transition: 0.3s; font-size: 16px; }
+        input:focus { border-color: #10b981; background: rgba(255, 255, 255, 0.08); }
+        .login-btn { width: 100%; padding: 14px; background: #10b981; color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: 10px; font-size: 16px; }
+        .login-btn:hover { background: #059669; transform: translateY(-2px); }
+        #error-msg { color: #fb7185; font-size: 13px; margin-top: 15px; display: none; background: rgba(251, 113, 133, 0.1); padding: 10px; border-radius: 8px; border: 1px solid rgba(251, 113, 133, 0.2); }
+
+        /* --- FLOATING USER --- */
+        .floating-user {
+            position: absolute;
+            cursor: pointer;
+            z-index: 10;
+            transition: 0.5s ease-in-out; 
+            user-select: none;
+        }
+
+        .floating-user span {
+            font-size: 14px;
+            font-weight: 600;
+            color: rgba(16, 185, 129, 0.6);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 8px 15px;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(5px);
+            transition: 0.3s;
+            white-space: nowrap;
+            position: relative; 
+            z-index: 2;
+        }
+        
+        .floating-user:hover { z-index: 60; }
+        .floating-user:hover span {
+            color: #10b981;
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        /* Hover Mini Popup */
+        .mini-popup {
+            position: absolute;
+            bottom: 125%; 
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            transform-origin: bottom center;
+            width: 70px; 
+            height: 70px;
+            border-radius: 50%;
+            border: 3px solid #10b981;
+            background-size: cover;
+            background-position: center;
+            transition: 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            opacity: 0;
+            pointer-events: none;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            z-index: 1;
+        }
+        .floating-user:hover .mini-popup { transform: translateX(-50%) scale(1); opacity: 1; }
+
+        /* --- KATTA MODAL OYNA --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.3s;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+
+        .user-modal {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 40px;
+            border-radius: 30px;
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            transform: scale(0.8);
+            transition: 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            position: relative;
+        }
+        .modal-overlay.active .user-modal { transform: scale(1); }
+
+        /* Rasm konteyneri */
+        .modal-img-container {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 20px;
+            border-radius: 20px;
+            border: 4px solid #10b981;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+            position: relative;
+            cursor: pointer; /* Zoom icon o'rniga oddiy qo'l */
+            z-index: 10;
+            transition: 0.4s ease; /* Silliq o'tish */
+            background-color: #1e293b;
+        }
+
+        .modal-img {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            border-radius: 18px;
+        }
+
+        /* --- FULL SCREEN RASM (Lupasiz) --- */
+        .modal-img-container.fullscreen {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90vw; /* Ekran enining 90% */
+            height: 90vw; /* Kvadrat */
+            max-width: 500px;
+            max-height: 500px;
+            z-index: 1000;
+            border-color: white;
+            box-shadow: 0 0 0 100vw rgba(0,0,0,0.9); /* Orqa fonni qoraytirish */
+        }
+        
+        /* Fullscreen bo'lganda matnlar yashirilsin */
+        .user-modal.hide-content .modal-name,
+        .user-modal.hide-content .modal-role,
+        .user-modal.hide-content .modal-close-btn {
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.2s;
+        }
+
+        .modal-name { font-size: 22px; font-weight: 700; color: white; margin-bottom: 5px; }
+        .modal-role { font-size: 14px; color: #10b981; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px; }
+        .modal-close-btn { background: rgba(255, 255, 255, 0.1); color: white; border: none; padding: 10px 30px; border-radius: 15px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+        .modal-close-btn:hover { background: #fb7185; color: white; }
+
+        /* --- POZITSIYALAR --- */
+        .pos-1 { top: 8%; left: 10%; } .pos-2 { top: 10%; left: 82%; } .pos-3 { top: 82%; left: 12%; }
+        .pos-4 { top: 85%; left: 80%; } .pos-5 { top: 45%; left: 5%; } .pos-6 { top: 50%; left: 88%; }
+        .pos-7 { top: 5%; left: 45%; } .pos-8 { top: 85%; left: 48%; } .pos-9 { top: 30%; left: 75%; }
+        .pos-10 { top: 68%; left: 15%; } .pos-11 { top: 70%; left: 78%; } .pos-12 { top: 25%; left: 18%; }
+        .pos-13 { top: 15%; left: 30%; } .pos-14 { top: 12%; left: 65%; } .pos-15 { top: 80%; left: 35%; }
+
+        @media (max-width: 768px) {
+            .login-card { width: 90%; padding: 30px 20px; }
+            .floating-user span { font-size: 11px; padding: 6px 12px; }
+            .pos-1 { top: 3%; left: 5%; } .pos-2 { top: 3%; left: 70%; } .pos-7 { top: 6%; left: 40%; }
+            .pos-13 { top: 12%; left: 10%; } .pos-14 { top: 12%; left: 65%; } .pos-3 { top: 92%; left: 5%; }
+            .pos-4 { top: 92%; left: 70%; } .pos-8 { top: 88%; left: 40%; } .pos-10 { top: 85%; left: 10%; }
+            .pos-11 { top: 85%; left: 70%; }
+            .pos-5, .pos-6, .pos-9, .pos-12, .pos-15 { opacity: 0; pointer-events: none; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loader-wrapper"><div class="loader"></div><div class="loader-text">E-sinf yuklanmoqda...</div></div>
+
+    <div class="floating-user pos-1" img="images/sunnatillo.jpg" ><span>Sunnatillo</span></div>
+    <div class="floating-user pos-2" img="images/missnora.jpg" ><span>Miss Nora</span></div>
+    <div class="floating-user pos-3" img="images/missnozima.jpg" ><span>Miss Nozima</span></div>
+    <div class="floating-user pos-4" img="images/asilbek.jpg" ><span>Asilbek</span></div>
+    <div class="floating-user pos-5" img="images/abdulaziz.jpg" ><span>Abdulaziz</span></div>
+    <div class="floating-user pos-6" img="images/farhod.jpg" ><span>Farhod</span></div>
+    <div class="floating-user pos-7" img="images/shirin.jpg" ><span>Shirin</span></div>
+    <div class="floating-user pos-8" img="images/ozoda.jpg" ><span>Ozoda</span></div>
+    <div class="floating-user pos-9" img="images/durdona.jpg" ><span>Durdona</span></div>
+    <div class="floating-user pos-10" img="images/afruza.jpg" ><span>Afruza</span></div>
+    <div class="floating-user pos-11" img="images/muhammadali.jpg" ><span>Muhammad Ali</span></div>
+    <div class="floating-user pos-12" img="images/fattohbek.jpg" ><span>Fattohbek</span></div>
+    <div class="floating-user pos-13" img="images/nastya.jpg" ><span>Nastya</span></div>
+    <div class="floating-user pos-14" img="images/ozodbek.jpg" ><span>Ozodbek</span></div>
+    <div class="floating-user pos-15" img="images/asadbek.jpg" ><span>Asadbek</span></div>
+
+    <div class="login-card">
+        <h2>Tizimga kirish</h2>
+        <div class="input-group"><label>Login</label><input type="text" id="username" placeholder="Loginni kiriting"></div>
+        <div class="input-group"><label>Parol</label><input type="password" id="password" placeholder="••••••••"></div>
+        <button class="login-btn" onclick="handleLogin()">Tizimga kirish</button>
+        <div id="error-msg">Login yoki parol xato!</div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+        <div class="user-modal" id="userModal" onclick="event.stopPropagation()">
+            <div class="modal-img-container" id="imgContainer">
+                <div class="modal-img" id="modalImg"></div>
+            </div>
+            
+            <h3 class="modal-name" id="modalName">Ism Familiya</h3>
+            <p class="modal-role" id="modalRole">Lavozim</p>
+            <button class="modal-close-btn" onclick="closeModal()">Yopish</button>
+        </div>
+    </div>
+
+    <script>
+        const defaultUsers = [
+            { login: "admin", pass: "777", role: "admin", fullName: "Bosh Admin" },
+            { login: "oqi", pass: "123", role: "teacher", fullName: "Olimova Gulnoza", info: "Matematika" },
+            { login: "ali", pass: "123", role: "student", fullName: "Aliyev Umar", info: "9-A Sinf" },
+            { login: "ali_ota", pass: "123", role: "parent", fullName: "Aliyev Rustam", info: "ali" },
+            { login: "ali_otach", pass: "123", role: "parent", fullName: "Aliyev Rustamali", info: "ali" }
+        ];
+
+        window.onload = () => {
+            if(!localStorage.getItem('usersList')) {
+                localStorage.setItem('usersList', JSON.stringify(defaultUsers));
+            }
+            setTimeout(() => document.getElementById("loader-wrapper").classList.add("loader-hidden"), 800);
+            setupInteractions();
+            setupImageExpand();
+        };
+
+        function setupInteractions() {
+            const users = document.querySelectorAll('.floating-user');
+            const modalOverlay = document.getElementById('modalOverlay');
+            const modalImg = document.getElementById('modalImg');
+            const modalName = document.getElementById('modalName');
+            const modalRole = document.getElementById('modalRole');
+
+            users.forEach(user => {
+                const imgUrl = user.getAttribute('img');
+                const name = user.querySelector('span').innerText;
+                const role = user.getAttribute('data-role');
+
+                // Hover effekti
+                const miniPopup = document.createElement('div');
+                miniPopup.className = 'mini-popup';
+                miniPopup.style.backgroundImage = `url('${imgUrl}')`;
+                user.appendChild(miniPopup);
+
+                // Click effekti
+                user.addEventListener('click', () => {
+                    modalName.innerText = name;
+                    modalRole.innerText = role;
+                    modalImg.style.backgroundImage = `url('${imgUrl}')`;
+                    
+                    resetExpand(); // Har safar ochilganda rasm kichik holatda bo'lsin
+                    modalOverlay.classList.add('active');
+                    document.body.classList.add('modal-open');
+                });
+            });
+        }
+
+        // --- RASMNI KATTALASHTIRISH (FULL SCREEN) ---
+        function setupImageExpand() {
+            const container = document.getElementById('imgContainer');
+            const modal = document.getElementById('userModal');
+
+            container.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                // Toggle: Agar katta bo'lsa kichrayadi, kichik bo'lsa kattalashadi
+                container.classList.toggle('fullscreen');
+
+                if (container.classList.contains('fullscreen')) {
+                    modal.classList.add('hide-content');
+                } else {
+                    modal.classList.remove('hide-content');
+                }
+            });
+        }
+
+        function resetExpand() {
+            const container = document.getElementById('imgContainer');
+            const modal = document.getElementById('userModal');
+            container.classList.remove('fullscreen');
+            modal.classList.remove('hide-content');
+        }
+
+        function closeModal() {
+            resetExpand();
+            document.getElementById('modalOverlay').classList.remove('active');
+            document.body.classList.remove('modal-open');
+        }
+
+        function handleLogin() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
+            const errorDiv = document.getElementById('error-msg');
+            const users = JSON.parse(localStorage.getItem('usersList')) || [];
+            const found = users.find(x => x.login === u && x.pass === p);
+
+            if(found) {
+                errorDiv.style.display = 'none';
+                document.getElementById("loader-wrapper").classList.remove("loader-hidden");
+                localStorage.setItem('currentUser', JSON.stringify(found));
+                setTimeout(() => { window.location.href = found.role + '.html'; }, 600);
+            } else {
+                errorDiv.style.display = 'block';
+                document.getElementById('password').value = "";
+            }
+        }
+        document.addEventListener('keypress', (e) => { if(e.key === 'Enter') handleLogin(); });
+    </script>
+</body>
+</html>

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Paneli | E-sinf</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f8fafc;
+            padding: 15px; /* Mobil uchun kamaytirildi */
+        }
+
+        #loader-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f172a;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s;
+        }
+
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(16, 185, 129, 0.1);
+            border-top: 5px solid #10b981;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loader-hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .container {
+            max-width: 1250px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 20px; /* Mobil uchun optimallashdi */
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 15px;
+        }
+
+        .header h1 { font-size: 1.2rem; }
+
+        /* Stats - Mobil uchun 2 ustun qilindi */
+        .admin-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        @media (min-width: 768px) {
+            .admin-stats { grid-template-columns: repeat(4, 1fr); }
+            .container { padding: 40px; }
+            .header h1 { font-size: 2rem; }
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-card h4 { font-size: 0.8rem; opacity: 0.8; }
+        .stat-card p { font-size: 18px; font-weight: 600; color: #10b981; }
+
+        /* Form - Mobil uchun qatorlar */
+        .add-user-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 18px;
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        @media (min-width: 768px) {
+            .add-user-card {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                align-items: end;
+            }
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+
+        input, select {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            outline: none;
+            font-size: 16px; /* Zoom bo'lmasligi uchun */
+        }
+
+        .add-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            margin-bottom: 20px;
+            outline: none;
+        }
+
+        /* JADVALNI MOBILGA MOSLASH */
+        .table-container { width: 100%; overflow-x: auto; }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        @media screen and (max-width: 768px) {
+            thead { display: none; }
+            tr {
+                display: block;
+                background: rgba(255, 255, 255, 0.02);
+                margin-bottom: 15px;
+                border-radius: 15px;
+                padding: 10px;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+            }
+            td {
+                display: flex;
+                justify-content: space-between;
+                padding: 8px 5px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                text-align: right;
+            }
+            td:last-child { border-bottom: none; }
+            td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #94a3b8;
+                text-align: left;
+            }
+        }
+
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+
+        .role-badge { padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; }
+        .role-admin { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .role-teacher { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .role-student { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+        .role-parent { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+
+        /* MODALS */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .edit-btn, .del-btn {
+            background: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .edit-btn { border: 1px solid #3b82f6; color: #3b82f6; margin-right: 5px; }
+        .del-btn { border: 1px solid #fb7185; color: #fb7185; }
+
+        .confirm-btn { background: #fb7185; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #10b981;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 12px;
+            font-weight: 600;
+            z-index: 10000;
+            transition: all 0.4s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            white-space: nowrap;
+        }
+        .toast.show { top: 20px; }
+        .toast.error { background: #fb7185; }
+    </style>
+</head>
+
+<body>
+
+    <div id="loader-wrapper"><div class="loader"></div></div>
+
+    <div id="toast" class="toast">
+        <span id="toastIcon">✅</span>
+        <span id="toastMsg">Amal bajarildi!</span>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h3 style="color: #10b981;">Tahrirlash</h3>
+            <input type="hidden" id="editIndex">
+            <div class="input-group"><label>F.I.SH</label><input type="text" id="editName"></div>
+            <div class="input-group"><label>Login</label><input type="text" id="editLogin"></div>
+            <div class="input-group"><label>Parol</label><input type="text" id="editPass"></div>
+            <div class="input-group"><label>Ma'lumot</label><input type="text" id="editInfo"></div>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button class="add-btn" style="flex:1" onclick="saveEdit()">Saqlash</button>
+                <button class="del-btn" style="flex:1; background: rgba(255,255,255,0.1)" onclick="closeModal('editModal')">Bekor</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <div style="font-size: 40px;">⚠️</div>
+            <h3>Ishonchingiz komilmi?</h3>
+            <p style="color: #94a3b8; font-size: 13px;">Ma'lumotlar qayta tiklanmaydi.</p>
+            <input type="hidden" id="deleteIndex">
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button class="confirm-btn" style="flex:1" onclick="confirmDelete()">O'chirish</button>
+                <button class="add-btn" style="flex:1; background:#334155" onclick="closeModal('deleteModal')">Qolsin</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>Admin Paneli</h1>
+            <button onclick="logout()" style="background:none; border:none; color: #fb7185; cursor:pointer; font-weight:600;">Chiqish</button>
+        </div>
+
+        <div class="admin-stats">
+            <div class="stat-card"><h4>Jami</h4><p id="statTotal">0</p></div>
+            <div class="stat-card"><h4>Ustoz</h4><p id="statTeachers">0</p></div>
+            <div class="stat-card"><h4>O'quvchi</h4><p id="statStudents">0</p></div>
+            <div class="stat-card"><h4>Ota-ona</h4><p id="statParents">0</p></div>
+        </div>
+
+        <div class="add-user-card">
+            <div class="input-group"><label>F.I.SH</label><input type="text" id="newName" placeholder="Ism..."></div>
+            <div class="input-group"><label>Login</label><input type="text" id="newLogin" placeholder="login..."></div>
+            <div class="input-group"><label>Parol</label><input type="text" id="newPass" placeholder="parol..."></div>
+            <div class="input-group"><label>Rol</label>
+                <select id="newRole" onchange="toggleFields()">
+                    <option value="student">O'QUVCHI</option>
+                    <option value="teacher">O'QITUVCHI</option>
+                    <option value="parent">OTA-ONA</option>
+                </select>
+            </div>
+            <div class="input-group" id="subjectField" style="display:none;"><label>Fan</label><input type="text" id="newSubject"></div>
+            <div class="input-group" id="childLinkField" style="display:none;"><label>Farzand Logini</label><input type="text" id="newChildLogin"></div>
+            <button class="add-btn" onclick="addNewUser()">Qo'shish</button>
+        </div>
+
+        <input type="text" class="search-bar" id="searchInp" placeholder="Qidirish..." onkeyup="filterTable()">
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>F.I.SH</th>
+                        <th>Login</th>
+                        <th>Parol</th>
+                        <th>Ma'lumot</th>
+                        <th>Roli</th>
+                        <th>Amallar</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Javascript kodingiz ham to'liq o'z holicha saqlangan
+        const defaultUsers = [
+            { login: "admin", pass: "777", role: "admin", fullName: "Bosh Administrator", info: "Tizim" },
+            { login: "s_gulnora", pass: "samiyeva81", role: "teacher", fullName: "Gulnora Samiyeva", info: "Ingliz tili" },
+            { login: "k_nozima", pass: "karabayeva88", role: "teacher", fullName: "Nozima Karabayeva", info: "Matematika" },
+            { login: "s_rustamshayev", pass: "sunnatillo09", role: "student", fullName: "Sunnatillo Rustamshayev", info: "10-Black" },
+            { login: "n_rustamshayev", pass: "no'monjon70", role: "parent", fullName: "No'monjon Rustamshayev", info: "s_rustamshayev" },
+        ];
+
+        let usersData = JSON.parse(localStorage.getItem('usersList')) || defaultUsers;
+
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            document.getElementById('toastIcon').innerText = (type === "success") ? "✅" : "❌";
+            if (type === "error") toast.classList.add('error'); else toast.classList.remove('error');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function renderUsers() {
+            const tbody = document.getElementById('userTableBody');
+            tbody.innerHTML = '';
+            usersData.forEach((u, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td data-label="F.I.SH"><b>${u.fullName}</b></td>
+                        <td data-label="Login"><code>${u.login}</code></td>
+                        <td data-label="Parol"><code>${u.pass}</code></td>
+                        <td data-label="Ma'lumot" style="color:#10b981">${u.info || '---'}</td>
+                        <td data-label="Roli"><span class="role-badge role-${u.role}">${u.role.toUpperCase()}</span></td>
+                        <td data-label="Amallar">
+                            <button class="edit-btn" onclick="openEdit(${index})">✎</button>
+                            ${u.role !== 'admin' ? `<button class="del-btn" onclick="openDelete(${index})">🗑</button>` : ''}
+                        </td>
+                    </tr>`;
+            });
+            updateStats();
+        }
+
+        function openEdit(index) {
+            const user = usersData[index];
+            document.getElementById('editIndex').value = index;
+            document.getElementById('editName').value = user.fullName;
+            document.getElementById('editLogin').value = user.login;
+            document.getElementById('editPass').value = user.pass;
+            document.getElementById('editInfo').value = user.info || "";
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function saveEdit() {
+            const index = document.getElementById('editIndex').value;
+            usersData[index].fullName = document.getElementById('editName').value;
+            usersData[index].login = document.getElementById('editLogin').value;
+            usersData[index].pass = document.getElementById('editPass').value;
+            usersData[index].info = document.getElementById('editInfo').value;
+            localStorage.setItem('usersList', JSON.stringify(usersData));
+            renderUsers();
+            closeModal('editModal');
+            showToast("Ma'lumotlar yangilandi!");
+        }
+
+        function addNewUser() {
+            const name = document.getElementById('newName').value;
+            const login = document.getElementById('newLogin').value;
+            const pass = document.getElementById('newPass').value;
+            const role = document.getElementById('newRole').value;
+            const info = (role === 'teacher') ? document.getElementById('newSubject').value :
+                        (role === 'parent' ? document.getElementById('newChildLogin').value : "9-A Sinf");
+
+            if (!name || !login || !pass) {
+                showToast("Barcha maydonlarni to'ldiring!", "error");
+                return;
+            }
+
+            if (usersData.find(u => u.login === login)) {
+                showToast("Bu login band!", "error");
+                return;
+            }
+
+            usersData.push({ fullName: name, login, pass, role, info: info });
+            localStorage.setItem('usersList', JSON.stringify(usersData));
+            renderUsers();
+            
+            // Tozalash
+            document.getElementById('newName').value = "";
+            document.getElementById('newLogin').value = "";
+            document.getElementById('newPass').value = "";
+            showToast("Foydalanuvchi qo'shildi!");
+        }
+
+        function openDelete(index) {
+            document.getElementById('deleteIndex').value = index;
+            document.getElementById('deleteModal').style.display = 'flex';
+        }
+
+        function confirmDelete() {
+            const index = document.getElementById('deleteIndex').value;
+            usersData.splice(index, 1);
+            localStorage.setItem('usersList', JSON.stringify(usersData));
+            renderUsers();
+            closeModal('deleteModal');
+            showToast("Foydalanuvchi o'chirildi!", "error");
+        }
+
+        function updateStats() {
+            document.getElementById('statTotal').innerText = usersData.length;
+            document.getElementById('statTeachers').innerText = usersData.filter(u => u.role === 'teacher').length;
+            document.getElementById('statStudents').innerText = usersData.filter(u => u.role === 'student').length;
+            document.getElementById('statParents').innerText = usersData.filter(u => u.role === 'parent').length;
+        }
+
+        function toggleFields() {
+            const role = document.getElementById('newRole').value;
+            document.getElementById('subjectField').style.display = (role === 'teacher') ? 'flex' : 'none';
+            document.getElementById('childLinkField').style.display = (role === 'parent') ? 'flex' : 'none';
+        }
+
+        function filterTable() {
+            const val = document.getElementById('searchInp').value.toLowerCase();
+            const rows = document.querySelectorAll('#userTableBody tr');
+            rows.forEach(row => { row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none"; });
+        }
+
+        function logout() { localStorage.removeItem('currentUser'); window.location.href = 'index.html'; }
+
+        window.onload = function () {
+            renderUsers();
+            setTimeout(() => document.getElementById("loader-wrapper").classList.add("loader-hidden"), 500);
+        };
+    </script>
+</body>
+</html>

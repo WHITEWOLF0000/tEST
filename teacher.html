@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Panel | Auto Attendance</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { min-height: 100vh; background: #0f172a; color: #f8fafc; display: flex; flex-direction: row; }
+        
+        /* Loader */
+        #loader-wrapper {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0f172a; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 9999;
+            transition: opacity 0.5s, visibility 0.5s;
+        }
+        .loader {
+            width: 50px; height: 50px; border: 5px solid rgba(16, 185, 129, 0.1);
+            border-top: 5px solid #10b981; border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loader-hidden { opacity: 0; visibility: hidden; }
+
+        /* Toast */
+        .toast {
+            position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+            background: #10b981; color: white; padding: 15px 30px;
+            border-radius: 12px; font-weight: 600; z-index: 10000;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            transition: top 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            display: flex; align-items: center; gap: 10px; width: auto; min-width: 250px;
+        }
+        .toast.show { top: 30px; }
+        .toast.error { background: #fb7185; }
+
+        /* Sidebar */
+        .sidebar { 
+            width: 280px; background: rgba(15, 23, 42, 0.95); 
+            backdrop-filter: blur(10px); border-right: 1px solid rgba(255, 255, 255, 0.1); 
+            padding: 30px; position: fixed; height: 100vh; display: flex; flex-direction: column;
+            z-index: 1000; transition: transform 0.3s ease;
+        }
+        .sidebar h2 { color: #10b981; margin-bottom: 40px; font-size: 22px; }
+        .nav-link { padding: 14px 18px; display: block; color: #94a3b8; text-decoration: none; cursor: pointer; border-radius: 12px; margin-bottom: 10px; transition: 0.3s; }
+        .nav-link:hover { background: rgba(255, 255, 255, 0.05); color: white; }
+        .nav-link.active { background: rgba(16, 185, 129, 0.1); color: #10b981; font-weight: 600; }
+        .logout-btn { color: #fb7185; border: 1px solid rgba(251, 113, 133, 0.2); margin-top: auto; margin-bottom: 20px; text-align: center; }
+        
+        .menu-toggle { display: none; position: fixed; top: 20px; right: 20px; z-index: 1001; background: #10b981; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; }
+
+        /* Main Content */
+        .main-content { flex: 1; margin-left: 280px; padding: 40px; transition: 0.3s; width: 100%; }
+        .glass-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); padding: 30px; border-radius: 24px; overflow-x: auto; margin-bottom: 20px; }
+        
+        .week-indicator { 
+            background: rgba(16, 185, 129, 0.1); color: #10b981; 
+            padding: 5px 15px; border-radius: 20px; font-size: 12px; 
+            display: inline-block; margin-bottom: 15px; border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th { text-align: center; padding: 12px; color: #94a3b8; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.1); text-transform: uppercase;}
+        td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: center; }
+        .std-name { text-align: left; min-width: 150px; }
+        
+        .day-input { width: 45px; padding: 6px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(0,0,0,0.2); color: white; text-align: center; outline: none; transition: 0.3s; }
+        .avg-cell { font-weight: 600; color: #f59e0b; font-size: 16px; background: rgba(245, 158, 11, 0.05); border-radius: 8px; }
+
+        /* ATTENDANCE BUTTONS */
+        .attendance-toggle {
+            padding: 8px 16px; border-radius: 10px; border: none; cursor: pointer;
+            font-weight: 600; font-size: 12px; transition: 0.3s; width: 120px;
+        }
+        .status-present { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .status-absent { background: rgba(251, 113, 133, 0.1); color: #fb7185; border: 1px solid rgba(251, 113, 133, 0.2); }
+        .status-late { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
+        
+        /* Save button removed */
+
+        .live-indicator { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #10b981; background: rgba(16, 185, 129, 0.1); padding: 5px 10px; border-radius: 15px; margin-left: 10px; }
+        .pulse-dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        .section { display: none; }
+        .section.active { display: block; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .late-time-text { color: #f59e0b; font-size: 11px; font-weight: 600; }
+        .on-time-text { color: #10b981; font-size: 11px; }
+
+        @media (max-width: 992px) {
+            .sidebar { transform: translateX(-100%); width: 250px; }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 20px; padding-top: 70px; }
+            .menu-toggle { display: block; }
+            .glass-card { padding: 15px; border-radius: 16px; }
+            h1 { font-size: 20px; }
+            .toast { width: 90%; font-size: 14px; }
+        }
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    </style>
+</head>
+<body>
+
+    <div id="loader-wrapper">
+        <div class="loader"></div>
+        <div class="loader-text" style="margin-top: 10px;">Tizim yuklanmoqda...</div>
+    </div>
+
+    <button class="menu-toggle" onclick="toggleSidebar()">☰ Menyu</button>
+
+    <div id="toast" class="toast">
+        <span id="toastIcon">✅</span>
+        <span id="toastMsg">Amal bajarildi!</span>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+        <h2>E-sinf</h2>
+        <div class="nav-link active" onclick="switchTab('home', this)">🏠 Jurnal</div>
+        <div class="nav-link" onclick="switchTab('attendance', this)">✅ Davomat</div>
+        <div class="nav-link" onclick="switchTab('rating', this)">📊 Reyting</div>
+        <div class="nav-link" onclick="switchTab('mock-tests', this)">📝 Mock testlari</div>
+        <div class="nav-link" onclick="switchTab('parents', this)">👪 Ota-onalar</div>
+        <a href="javascript:void(0)" class="nav-link logout-btn" onclick="logout()">Chiqish</a>
+    </div>
+
+    <div class="main-content">
+        <div id="home" class="section active">
+            <h1 id="teacherWelcome">Xush kelibsiz!</h1>
+            <div id="weekDisplay" class="week-indicator">Hafta: 1-Haftalik</div>
+            <p id="teacherSubject" style="color: #94a3b8; margin-bottom: 20px;">Fan: Yuklanmoqda...</p>
+            <div class="glass-card">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="std-name">O'quvchi</th>
+                                <th>Du</th><th>Se</th><th>Ch</th><th>Pa</th><th>Ju</th>
+                                <th style="color: #f59e0b;">O'rt.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gradingTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="attendance" class="section">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                <h1>Kunlik Davomat</h1>
+                <div class="live-indicator"><div class="pulse-dot"></div> Live (Auto-Save)</div>
+            </div>
+            
+            <div class="week-indicator" id="todayDateDisplay">Bugun: --.--.----</div>
+            <div class="week-indicator" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2)">Boshlanish: 08:30</div>
+            
+            <div class="glass-card">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="std-name">O'quvchi</th>
+                                <th>Holat</th>
+                                <th>Kelish Vaqti</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceTableBody"></tbody>
+                    </table>
+                </div>
+                </div>
+        </div>
+
+        <div id="rating" class="section">
+            <h1>Sinf Reytingi</h1>
+            <div class="glass-card"><div class="table-container"><table><thead><tr><th>O'rin</th><th>O'quvchi</th><th>Ball</th></tr></thead><tbody id="ratingTable"></tbody></table></div></div>
+        </div>
+        <div id="mock-tests" class="section">
+            <h1>📝 Mock testlari</h1>
+            <div class="glass-card"><div style="text-align: center; padding: 40px 10px;"><span style="font-size: 40px;">📄</span><h3 style="color: #f8fafc;">Testlar mavjud emas</h3><button class="save-btn">+ Yangi test</button></div></div>
+        </div>
+        <div id="parents" class="section">
+            <h1>Ota-onalar</h1>
+            <div class="glass-card"><div class="table-container"><table><thead><tr><th style="text-align: left;">O'quvchi</th><th style="text-align: left;">Ota-onasi</th><th>Holat</th></tr></thead><tbody id="parentTable"></tbody></table></div></div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        function switchTab(id, el) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            el.classList.add('active');
+            document.getElementById('sidebar').classList.remove('open');
+            if(id === 'home') renderGrading();
+            if(id === 'attendance') { renderAttendance(); }
+            if(id === 'rating') renderRating();
+            if(id === 'parents') renderParents();
+        }
+
+        const days = ['mon', 'tue', 'wed', 'thu', 'fri'];
+        let dailyAttendance = {}; 
+        let arrivalInfos = {}; 
+        let autoRefreshInterval = null;
+
+        // --- SOZLAMALAR ---
+        const START_HOUR = 8;
+        const START_MINUTE = 30;
+
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            document.getElementById('toastIcon').innerText = (type === "success") ? "✅" : "❌";
+            type === "error" ? toast.classList.add('error') : toast.classList.remove('error');
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        function getStudentsFromDB() {
+            const allUsers = JSON.parse(localStorage.getItem('usersList')) || [];
+            return allUsers.filter(u => u.role === 'student');
+        }
+
+        window.onload = function() {
+            const user = JSON.parse(localStorage.getItem('currentUser'));
+            if (user && user.role !== 'teacher') { window.location.href = 'index.html'; return; }
+            if(user) {
+                document.getElementById('teacherWelcome').innerText = "Salom, " + user.fullName.split(' ')[0];
+                document.getElementById('teacherSubject').innerText = "Fan: " + (user.info || "Aniq fanlar");
+            }
+            document.getElementById('todayDateDisplay').innerText = "Bugun: " + new Date().toLocaleDateString('uz-UZ');
+            renderGrading();
+            setTimeout(() => document.getElementById("loader-wrapper").classList.add("loader-hidden"), 800);
+
+            startAutoHikvisionSync();
+        };
+
+        function startAutoHikvisionSync() {
+            autoRefreshInterval = setInterval(() => {
+                if(document.getElementById('attendance').classList.contains('active')) {
+                    loadFromHikvisionSilent();
+                }
+            }, 3000);
+        }
+
+        // --- HIKVISION (O'ZI QILADIGAN QISM) ---
+        async function loadFromHikvisionSilent() {
+            try {
+                const response = await fetch('http://localhost:3000/api/attendance');
+                const events = await response.json();
+                
+                if(!events || events.length === 0) return;
+
+                const students = getStudentsFromDB();
+                let hasChanges = false;
+
+                events.forEach(event => {
+                    const deviceUserID = event.MatchResult.employeeNoString || event.MatchResult.employeeNo;
+                    const eventTimeStr = event.MatchResult.time || new Date().toISOString(); 
+                    const eventDate = new Date(eventTimeStr);
+
+                    const student = students.find(s => s.login == deviceUserID);
+                    
+                    if (student) {
+                        // Agar o'quvchi hali "Kelmadi" bo'lsa
+                        if (!dailyAttendance[student.login]) {
+                            dailyAttendance[student.login] = true;
+                            
+                            // Kech qolishni hisoblash
+                            const deadline = new Date(eventDate);
+                            deadline.setHours(START_HOUR, START_MINUTE, 0, 0);
+
+                            let info = { time: eventDate.toLocaleTimeString('uz-UZ', {hour: '2-digit', minute:'2-digit'}), isLate: false, lateMinutes: 0 };
+
+                            if (eventDate > deadline) {
+                                const diffMs = eventDate - deadline;
+                                const diffMins = Math.floor(diffMs / 60000);
+                                info.isLate = true;
+                                info.lateMinutes = diffMins;
+                            }
+                            
+                            arrivalInfos[student.login] = info;
+                            hasChanges = true;
+                        }
+                    }
+                });
+
+                if (hasChanges) {
+                    saveToLocal(); // AVTOMATIK SAQLASH
+                    renderAttendance();
+                }
+
+            } catch (error) {
+                console.error("Hikvision sync error:", error); 
+            }
+        }
+
+        // --- MA'LUMOTNI BAZAGA SAQLASH (YORDAMCHI FUNKSIYA) ---
+        function saveToLocal() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            const attendanceDB = JSON.parse(localStorage.getItem('attendanceData')) || {};
+            attendanceDB[today] = dailyAttendance;
+            localStorage.setItem('attendanceData', JSON.stringify(attendanceDB));
+
+            const infosDB = JSON.parse(localStorage.getItem('attendanceInfos')) || {};
+            infosDB[today] = arrivalInfos;
+            localStorage.setItem('attendanceInfos', JSON.stringify(infosDB));
+        }
+
+        function renderAttendance() {
+            const students = getStudentsFromDB();
+            const today = new Date().toISOString().split('T')[0];
+            const attendanceDB = JSON.parse(localStorage.getItem('attendanceData')) || {};
+            const todayData = attendanceDB[today] || {};
+            const todayInfos = JSON.parse(localStorage.getItem('attendanceInfos')) || {};
+
+            document.getElementById('attendanceTableBody').innerHTML = students.map(s => {
+                let isPresent = dailyAttendance[s.login];
+                if (isPresent === undefined) {
+                    isPresent = (todayData[s.login] === undefined ? false : todayData[s.login]);
+                    dailyAttendance[s.login] = isPresent;
+                }
+
+                let info = arrivalInfos[s.login];
+                if (!info && todayInfos[today] && todayInfos[today][s.login]) {
+                    info = todayInfos[today][s.login];
+                    arrivalInfos[s.login] = info;
+                }
+
+                let btnClass = 'status-absent';
+                let btnText = '❌ Kelmadi';
+                let timeDisplay = '-';
+
+                if (isPresent) {
+                    if (info && info.isLate) {
+                        btnClass = 'status-late';
+                        btnText = '⚠️ Kech qoldi';
+                        timeDisplay = `<span class="late-time-text">${info.time} (+${info.lateMinutes} daq)</span>`;
+                    } else {
+                        btnClass = 'status-present';
+                        btnText = '✅ Keldi';
+                        timeDisplay = info ? `<span class="on-time-text">${info.time} (O'z vaqtida)</span>` : `<span class="on-time-text">O'z vaqtida</span>`;
+                    }
+                }
+
+                return `<tr>
+                    <td class="std-name">${s.fullName}</td>
+                    <td><button id="btn-${s.login}" class="attendance-toggle ${btnClass}" onclick="toggleAttendance('${s.login}')">${btnText}</button></td>
+                    <td>${timeDisplay}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function toggleAttendance(login) {
+            // Qo'lda o'zgartirganda ham avtomatik saqlaymiz
+            const currentStatus = dailyAttendance[login];
+            dailyAttendance[login] = !currentStatus;
+
+            if (dailyAttendance[login] === false) {
+                delete arrivalInfos[login];
+            } else {
+                arrivalInfos[login] = { time: 'Manual', isLate: false, lateMinutes: 0 };
+            }
+
+            saveToLocal(); // DARHOL SAQLASH
+            renderAttendance();
+            showToast("O'zgarish saqlandi"); // Faqat qo'lda bosganda xabar chiqadi
+        }
+
+        // Boshqa qismlar o'zgarishsiz...
+        function renderGrading() {
+            const students = getStudentsFromDB(); const journal = JSON.parse(localStorage.getItem('journalData')) || {};
+            document.getElementById('gradingTable').innerHTML = students.map(s => {
+                const sGrades = journal[s.login] || {}; let sum = 0, count = 0;
+                const dayInputs = days.map(d => {
+                    const v = sGrades[d] || ""; if(v!==""){sum+=Number(v);count++}
+                    return `<td><input type="number" class="day-input" value="${v}" min="1" max="5" onchange="saveGrade('${s.login}','${d}',this)"></td>`;
+                }).join('');
+                return `<tr><td class="std-name"><b>${s.fullName}</b></td>${dayInputs}<td class="avg-cell">${count>0?(sum/count).toFixed(1):"0.0"}</td></tr>`;
+            }).join('');
+        }
+        function saveGrade(l,d,i){ let j=JSON.parse(localStorage.getItem('journalData'))||{}; if(!j[l])j[l]={}; if(i.value!==""&&(i.value<1||i.value>5)){showToast("Xato!","error");i.value="";return} j[l][d]=i.value!==""?Number(i.value):""; localStorage.setItem('journalData',JSON.stringify(j)); renderGrading(); showToast("Ball saqlandi"); }
+        function renderRating(){
+            const s=getStudentsFromDB(),j=JSON.parse(localStorage.getItem('journalData'))||{};
+            const r=s.map(st=>{const g=j[st.login]||{};let sm=0,c=0;days.forEach(d=>{if(g[d]){sm+=Number(g[d]);c++}});return{name:st.fullName,avg:c>0?sm/c:0}}).sort((a,b)=>b.avg-a.avg);
+            document.getElementById('ratingTable').innerHTML=r.map((x,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${x.name}</td><td style="color:#10b981;font-weight:600">${x.avg.toFixed(1)}</td></tr>`).join('');
+        }
+        function renderParents(){
+            const s=getStudentsFromDB(),u=JSON.parse(localStorage.getItem('usersList'))||[],p=u.filter(x=>x.role==='parent');
+            document.getElementById('parentTable').innerHTML=s.map(st=>{const pa=p.find(x=>x.info===st.login);return`<tr><td style="text-align:left">${st.fullName}</td><td style="text-align:left">${pa?pa.fullName:'Yo\'q'}</td><td>${pa?'✅':'⏳'}</td></tr>`}).join('');
+        }
+        function logout(){localStorage.removeItem('currentUser');window.location.href='index.html';}
+    </script>
+</body>
+</html>
